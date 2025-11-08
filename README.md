@@ -56,6 +56,7 @@
 清华回忆地图/
 ├── tsinghua-memory-map.html          # 主程序文件（完整版）
 ├── campus_map_2023.jpg        # 清华校园地图图片
+├── Daniel's Data_Chapter1.json      # 作者的示例数据（伤春悲秋版）
 └── README.md                  # 说明文档
 ```
 
