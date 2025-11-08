@@ -1,2 +1,90 @@
-# tsinghua_memory_map
-清华回忆地图_一个本地 HTML
+# 清华回忆地图 📍
+
+一个基于HTML5的交互式校园记忆地图，让你在清华大学校园地图上记录和分享珍贵回忆。
+
+![清华回忆地图](https://img.shields.io/badge/清华大学-校园回忆地图-purple?style=for-the-badge)
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white)
+
+
+## 🚀 快速开始
+
+### 方法一：下载使用（推荐）
+
+1. 下载项目文件：
+   - `tsinghua-memory-map.html` - 主程序文件
+   - `campus_map_2023.jpg` - 清华校园地图图片
+
+2. 将两个文件放在同一文件夹中
+
+3. 双击打开 `tsinghua-memory-map.html` 即可使用
+
+### 方法二：在线预览
+
+直接在浏览器中打开HTML文件即可使用，无需安装任何软件。
+
+## 📱 使用说明
+
+### 基本操作
+- **🖱️ 移动**: 拖拽地图移动视图
+- **🔍 缩放**: 使用鼠标滚轮或右侧+/-按钮缩放
+- **📍 添加回忆**: 点击"添加回忆点"按钮，然后在地图上选择位置
+
+### 添加回忆流程
+1. 点击左侧面板的"📍 添加回忆点"按钮
+2. 地图进入选择模式（光标变为十字）
+3. 点击地图上的目标位置
+4. 确认位置后填写回忆信息：
+   - 地点名称
+   - 回忆内容
+   - 季节（选填，春夏秋冬）
+   - 年份（选填，支持 1970-2025）
+5. 保存后在地图上显示标记
+
+### 数据管理
+- **📊 数据管理**: 查看所有回忆的统计信息和详细列表
+- **📤 导出数据**: 将回忆数据导出为JSON文件备份
+- **📥 导入数据**: 从JSON文件导入回忆数据。你可以创建并保存多组不同主题的回忆数据，然后分别导入网页中查看效果，实现回忆主题的切换。
+- **✏️ 编辑**: 修改已有回忆的信息
+- **🗑️ 删除**: 删除不需要的回忆
+
+
+## 📁 项目结构
+
+```
+清华回忆地图/
+├── tsinghua-memory-map.html          # 主程序文件（完整版）
+├── campus_map_2023.jpg        # 清华校园地图图片
+└── README.md                  # 说明文档
+```
+
+## 🔧 自定义
+
+### 更换地图图片
+1. 替换 `campus_map_2023.jpg` 为您的地图图片
+2. 图片建议尺寸：1920x1080或更高
+3. 支持格式：JPG, PNG
+
+### 修改样式
+所有样式都在HTML文件的`<style>`标签中，可以直接修改：
+- 颜色主题
+- 字体样式
+- 布局尺寸
+- 动画效果
+
+### 分享给朋友
+要将项目分享给朋友，需要提供：
+1. `tsinghua-memory-map.html` - 主程序
+2. `campus_map_2023.jpg` - 地图图片
+3. 导出的JSON文件，再导入到 HTML 中。
+
+## 📄 License
+
+MIT License
+
+---
+
+**注**: 
+1. 使用浏览器的localStorage，数据保存在本地浏览器，不会上传到服务器，关闭浏览器后重新打开数据仍然保留。
+2. 地图来源于清华大学官网 https://www.tsinghua.edu.cn/zjqh/xyfg/xydt.htm

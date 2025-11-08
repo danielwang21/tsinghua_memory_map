@@ -1,0 +1,2314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清华回忆地图 - 增强版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #722F37, #8B4A52);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 1000;
+        }
+        
+        .map-container {
+            position: relative;
+            width: 100vw;
+            height: calc(100vh - 80px);
+            overflow: hidden;
+            background: #f0f0f0;
+        }
+        
+        .campus-map {
+            position: absolute;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            transform-origin: 0 0;
+        }
+        
+        .campus-map:active {
+            cursor: grabbing;
+        }
+        
+        .campus-map.adding-marker {
+            cursor: crosshair !important;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+        
+        .zoom-controls {
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .zoom-btn {
+            width: 50px;
+            height: 50px;
+            border: none;
+            background: white;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .zoom-btn:hover {
+            background: #f0f0f0;
+        }
+        
+        .zoom-btn:not(:last-child) {
+            border-bottom: 1px solid #eee;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 320px;
+            z-index: 1000;
+        }
+        
+        .coordinate-display {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            z-index: 1000;
+        }
+        
+        .zoom-display {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            z-index: 1000;
+        }
+        
+        .map-marker {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: #722F37;
+            border: 1px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px; /* emoji大小调整为12px，和25px标记匹配 - 可在此修改 */
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s ease;
+            z-index: 500;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            pointer-events: auto;
+        }
+        
+        .map-marker:hover {
+            transform: translate(-50%, -50%) scale(1.3);
+            z-index: 600;
+        }
+        
+        /* 季节颜色配置 - 可以在这里修改颜色 */
+        .map-marker.season-spring { 
+            background: #10B981; /* 春天 - 绿色 */
+        }
+        .map-marker.season-summer { 
+            background: #e3c0d0; /* 夏天 - 粉色 */
+        }
+        .map-marker.season-autumn { 
+            background: #c68c5c; /* 秋天 - 咖色 */
+        }
+        .map-marker.season-winter { 
+            background: #c6d0e0; /* 冬天 - 蓝色 */
+        }
+        .map-marker.season-default { 
+            background: #722F37; /* 默认 - 深红色 */
+        }
+        
+        .add-marker-btn, .data-management-btn {
+            background: #722F37;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .data-management-btn {
+            background: #059669;
+        }
+        
+        .add-marker-btn:hover {
+            background: #5a252a;
+        }
+        
+        .data-management-btn:hover {
+            background: #047857;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        
+        .modal-content.large {
+            max-width: 800px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+        }
+        
+        .form-input:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #722F37;
+        }
+        
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .btn-primary {
+            background: #722F37;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-primary:hover {
+            background: #5a252a;
+        }
+        
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+        
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+        
+        .btn-edit {
+            background: #059669;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            margin-right: 5px;
+        }
+        
+        .btn-edit:hover {
+            background: #047857;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 1500;
+        }
+        
+        .error-info {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .data-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .data-table tbody tr:hover {
+            background: #f9fafb;
+        }
+        
+        .grade-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .grade-default { background: #6B7280; } /* 年份徽章样式 */
+        
+        .season-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .season-spring { background: #dcfce7; color: #166534; }
+        .season-summer { background: #dbeafe; color: #1e40af; }
+        .season-autumn { background: #fed7aa; color: #9a3412; }
+        .season-winter { background: #f1f5f9; color: #334155; }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #722F37;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+        
+        .adding-mode-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(114, 47, 55, 0.9);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            z-index: 1500;
+            pointer-events: none;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+        }
+        
+        /* 图片上传相关样式 */
+        .image-upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 15px;
+        }
+        
+        .image-upload-area:hover {
+            border-color: #722F37;
+            background: #f9f9f9;
+        }
+        
+        .image-upload-area.dragover {
+            border-color: #722F37;
+            background: #f0f9f4;
+        }
+        
+        .image-preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        
+        .image-remove-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        /* 回忆展示样式 */
+        .memory-content {
+            background: white;
+            border-radius: 12px;
+            padding: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 600px;
+            max-height: 85vh;
+            position: relative;
+            overflow: hidden;
+            margin: 20px auto;
+            min-height: 300px; /* 无图片时的最小高度 */
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 有图片时增加最小高度 */
+        .memory-content.has-image {
+            min-height: 400px; /* 有图片时的最小高度 */
+            min-width: 400px;
+        }
+        
+        .memory-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 25px 50px 0 25px; /* 右侧留更多空间给关闭按钮 */
+            min-height: 60px;
+            flex-shrink: 0;
+        }
+        
+        .memory-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #722F37;
+            line-height: 1.4;
+            flex: 1;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .memory-title-emoji {
+            font-size: 20px;
+        }
+        
+        .memory-badges {
+            display: flex;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+        
+        .memory-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #ffffff;
+        }
+        
+        /* 不同布局下的图片高度控制 */
+        .memory-main-content.horizontal-layout .memory-image {
+            /* 横向布局：使用JavaScript动态计算高度，防止超出文字区域 */
+            max-height: 350px; 
+        }
+        
+        .memory-main-content.vertical-layout .memory-image {
+            max-height: 250px; /* 竖向布局：限制图片最大高度，防止宽图片过大 */
+        }
+        
+        .memory-body {
+            padding: 20px;
+            min-height: 200px;
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0; /* 重要：允许flex子项收缩 */
+        }
+        
+        .memory-description {
+            line-height: 1.6;
+            color: #374151;
+            margin-bottom: 15px;
+            max-width: 400px;
+            word-wrap: break-word;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+        
+        .memory-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #6b7280;
+            margin-top: 15px;
+            padding: 15px 0;
+            border-top: 1px solid #e5e7eb;
+            flex-shrink: 0;
+            background: white;
+            position: sticky;
+            bottom: 0;
+        }
+        
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            z-index: 10;
+            transition: all 0.2s ease;
+        }
+        
+        .close-btn:hover {
+            background: rgba(0, 0, 0, 0.7);
+        }
+        
+        .year-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+        }
+        
+        .year-input:focus {
+            outline: none;
+            border-color: #722F37;
+        }
+        
+        /* 自定义滚动条样式 */
+        .memory-text-scrollable::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .memory-text-scrollable::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        .memory-text-scrollable::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        
+        .memory-text-scrollable::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        /* 图片和内容的自适应布局 */
+        .memory-main-content {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+        
+        .memory-main-content.vertical-layout {
+            flex-direction: column;
+        }
+        
+        .memory-main-content.horizontal-layout {
+            flex-direction: row;
+        }
+        
+        .memory-image-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 10px;
+            flex-shrink: 0;
+        }
+        
+        /* 横向布局时图片容器顶部对齐 */
+        .memory-main-content.horizontal-layout .memory-image-container {
+            align-items: flex-start; /* 确保顶部对齐 */
+            padding-top: 0; /* 移除顶部padding，与文字区域对齐 */
+        }
+        
+        .memory-main-content.horizontal-layout .memory-image-container {
+            width: 40%; /* 横向布局：图片占40%，文字占60% - 可在此修改比例 */
+            max-width: 50%;
+            padding-right: 10px;
+            padding-top: 0; /* 顶部对齐 */
+            flex-shrink: 0;
+            align-items: flex-start; /* 确保顶部对齐 */
+            /* 让图片容器高度跟随文字内容，而不是固定百分比 */
+        }
+        
+        .memory-main-content.vertical-layout .memory-image-container {
+            height: 40%; /* 竖向布局：图片占40%，文字占60% - 可在此修改比例 */
+            max-height: 40%;
+            padding-bottom: 10px;
+            flex-shrink: 0;
+        }
+        
+        .memory-text-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+        
+        .memory-text-scrollable {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        
+        /* 作者信息样式 */
+        .author-info {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            color: #666;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 12px;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .info-icon {
+            width: 20px;
+            height: 20px;
+            background: #722F37;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .info-icon:hover {
+            background: #8B4A52;
+            transform: scale(1.1);
+        }
+        
+        /* Info弹窗样式 */
+        .info-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .info-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .info-modal h3 {
+            color: #722F37;
+            margin-bottom: 20px;
+            font-size: 20px;
+            text-align: center;
+        }
+        
+        .info-modal p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .info-modal .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #999;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        
+        .info-modal .close-btn:hover {
+            color: #722F37;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📍 清华回忆地图</h1>
+    </div>
+    
+    <div class="map-container" id="map-container">
+        <!-- 校园地图 -->
+        <img id="campus-map" 
+             src="campus_map_2023.jpg" 
+             alt="清华大学校园地图" 
+             class="campus-map"
+             draggable="false">
+        
+        <!-- 添加模式提示 -->
+        <div class="adding-mode-hint" id="adding-hint" style="display: none;">
+            📍 点击地图选择位置
+        </div>
+        
+        <!-- 加载提示 -->
+        <div class="loading" id="loading">
+            <div>📍 正在加载校园地图...</div>
+            <div style="font-size: 12px; color: #666; margin-top: 10px;">
+                图片路径: campus_map_2023.jpg
+            </div>
+        </div>
+        
+        <!-- 控制面板 -->
+        <div class="controls">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomIn()" title="放大">+</button>
+                <button class="zoom-btn" onclick="zoomOut()" title="缩小">−</button>
+                <button class="zoom-btn" onclick="resetZoom()" title="重置">⌂</button>
+            </div>
+        </div>
+        
+        <!-- 信息面板 -->
+        <div class="info-panel">
+            <h3 style="margin-bottom: 15px;">🎯 操作指南</h3>
+            <ul style="list-style: none; line-height: 1.6;">
+                <li>🖱️ 拖拽移动地图</li>
+                <li>🔍 使用+/-按钮或滚轮缩放</li>
+                <li>👆 点击标记查看回忆</li>
+            </ul>
+            <button class="add-marker-btn" onclick="startAddingMarker(event)">
+                ➕ 添加回忆点
+            </button>
+            <button class="data-management-btn" onclick="openDataManagement()">
+                📊 记录管理
+            </button>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; font-size: 14px; color: #666;">
+                <div>回忆总数: <span id="memory-count">0</span></div>
+                <div style="margin-top: 5px;">
+                    <div>地图状态: <span id="map-status">初始化中...</span></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 坐标显示 -->
+        <div class="coordinate-display" id="coordinate-display">
+            坐标: 等待加载...
+        </div>
+        
+        <!-- 缩放显示 -->
+        <div class="zoom-display" id="zoom-display">
+            缩放: 等待加载...
+        </div>
+    </div>
+    
+    <!-- 添加回忆模态框 -->
+    <div id="memory-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 20px;">📝 添加新回忆</h3>
+            <form id="memory-form">
+                <div class="form-group">
+                    <label class="form-label">📍 坐标位置</label>
+                    <input type="text" id="marker-coords" class="form-input" readonly placeholder="点击地图选择位置">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">🏷️ 标题</label>
+                    <input type="text" id="memory-title" class="form-input" placeholder="例如：图书馆初遇、毕业典礼" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">📍 自定义标记图标</label>
+                    <input type="text" id="memory-emoji" class="form-input" placeholder="例如：🏫📚🌸💕 (可选，默认为📍)" maxlength="2">
+                    <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                        输入一个emoji作为地图上的标记图标，留空则使用默认的📍
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">🏢 地点名称</label>
+                    <input type="text" id="location-name" class="form-input" placeholder="例如：紫荆 16 号楼、东南门、学堂路与新民路十字路口">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">🖼️ 上传图片（可选）</label>
+                    <div class="image-upload-area" onclick="document.getElementById('image-input').click()">
+                        <input type="file" id="image-input" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+                        <div id="upload-text">
+                            📷 点击上传图片或拖拽图片到此处<br>
+                            <small style="color: #666;">支持 JPG、PNG 格式，建议大小不超过 5MB<br>建议图片比例不窄于 3:4，不宽于 16:9</small>
+                        </div>
+                        <img id="image-preview" class="image-preview" style="display: none;">
+                        <button type="button" id="remove-image-btn" class="image-remove-btn" style="display: none;" onclick="removeImage(event)">删除图片</button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">💭 回忆内容</label>
+                    <textarea id="memory-content" class="form-textarea" placeholder="在这里记录你的回忆、感受..." required></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">🌸 季节</label>
+                        <select id="memory-season" class="form-input">
+                            <option value="">选择季节（可选）</option>
+                            <option value="spring">🌸 春天</option>
+                            <option value="summer">🌞 夏天</option>
+                            <option value="autumn">🍂 秋天</option>
+                            <option value="winter">❄️ 冬天</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">📅 年份</label>
+                        <input type="number" id="memory-year" class="year-input" placeholder="例如：2021" min="1970" max="2025">
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px;">
+                    <button type="button" class="btn-secondary" onclick="closeMemoryModal()">取消</button>
+                    <button type="submit" class="btn-primary">保存回忆</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 编辑回忆模态框 -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 20px;">✏️ 编辑回忆</h3>
+            <form id="edit-form">
+                <input type="hidden" id="edit-memory-id">
+                
+                <div class="form-group">
+                    <label class="form-label">📍 坐标位置</label>
+                    <input type="text" id="edit-marker-coords" class="form-input" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">🏷️ 标题</label>
+                    <input type="text" id="edit-memory-title" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">📍 自定义标记图标</label>
+                    <input type="text" id="edit-memory-emoji" class="form-input" placeholder="例如：🏫📚🌸💕 (可选，默认为📍)" maxlength="2">
+                    <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                        输入一个emoji作为地图上的标记图标，留空则使用默认的📍
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">🏢 地点名称</label>
+                    <input type="text" id="edit-location-name" class="form-input">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">🖼️ 图片</label>
+                    <div class="image-upload-area" onclick="document.getElementById('edit-image-input').click()">
+                        <input type="file" id="edit-image-input" accept="image/*" style="display: none;" onchange="handleEditImageUpload(event)">
+                        <div id="edit-upload-text">
+                            📷 点击更换图片或拖拽图片到此处
+                        </div>
+                        <img id="edit-image-preview" class="image-preview" style="display: none;">
+                        <button type="button" id="edit-remove-image-btn" class="image-remove-btn" style="display: none;" onclick="removeEditImage(event)">删除图片</button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">💭 回忆内容</label>
+                    <textarea id="edit-memory-content" class="form-textarea" required></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">🌸 季节</label>
+                        <select id="edit-memory-season" class="form-input">
+                            <option value="">选择季节（可选）</option>
+                            <option value="spring">🌸 春天</option>
+                            <option value="summer">🌞 夏天</option>
+                            <option value="autumn">🍂 秋天</option>
+                            <option value="winter">❄️ 冬天</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">📅 年份</label>
+                        <input type="number" id="edit-memory-year" class="year-input" placeholder="例如：2020" min="2000" max="2025">
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px;">
+                    <button type="button" class="btn-secondary" onclick="closeEditModal()">取消</button>
+                    <button type="submit" class="btn-primary">更新回忆</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 数据管理模态框 -->
+    <div id="data-management-modal" class="modal">
+        <div class="modal-content large">
+            <h3 style="margin-bottom: 20px;">📊 数据记录中心</h3>
+            
+            <!-- 统计概览 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-memories">0</div>
+                    <div class="stat-label">总回忆数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="recent-memories">0</div>
+                    <div class="stat-label">本月新增</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="year-distribution">0</div>
+                    <div class="stat-label">年份分布</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="season-distribution">0</div>
+                    <div class="stat-label">季节分布</div>
+                </div>
+            </div>
+            
+            <!-- 操作按钮 -->
+            <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn-secondary" onclick="exportData()">📤 导出数据</button>
+                <button class="btn-secondary" onclick="importData()">📥 导入数据</button>
+                <button class="btn-secondary" onclick="clearAllData()">🗑️ 清空数据</button>
+                <button class="btn-secondary" onclick="refreshDataTable()">🔄 刷新</button>
+            </div>
+            
+            <!-- 数据表格 -->
+            <div style="overflow-x: auto;">
+                <table class="data-table" id="data-table">
+                    <thead>
+                        <tr>
+                            <th>标题</th>
+                            <th>地点</th>
+                            <th>坐标</th>
+                            <th>季节</th>
+                            <th>年份</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body">
+                        <!-- 动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn-primary" onclick="closeDataManagement()">关闭</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 查看回忆模态框 -->
+    <div id="view-modal" class="modal">
+        <div id="view-content"></div>
+    </div>
+
+    <script>
+        // 全局变量
+        let mapScale = 1;
+        let mapOffsetX = 0;
+        let mapOffsetY = 0;
+        let mapWidth = 0;
+        let mapHeight = 0;
+        let containerWidth = 0;
+        let containerHeight = 0;
+        let isDragging = false;
+        let isAddingMarker = false;
+        let clickedCoords = null;
+        let memories = [];
+        let mapLoaded = false;
+        let currentImageData = null; // 存储当前上传的图片数据
+        let currentEditImageData = null; // 存储编辑时的图片数据
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM加载完成，开始初始化地图');
+            initMap();
+            setupImageUpload();
+        });
+        
+        // 初始化地图
+        function initMap() {
+            const mapContainer = document.getElementById('map-container');
+            const mapImage = document.getElementById('campus-map');
+            
+            console.log('开始初始化地图');
+            updateMapStatus('正在加载图片...');
+            
+            // 图片加载成功处理
+            mapImage.onload = function() {
+                console.log('图片加载成功');
+                console.log('图片尺寸:', this.naturalWidth, 'x', this.naturalHeight);
+                
+                mapWidth = this.naturalWidth;
+                mapHeight = this.naturalHeight;
+                containerWidth = mapContainer.offsetWidth;
+                containerHeight = mapContainer.offsetHeight;
+                
+                console.log('容器尺寸:', containerWidth, 'x', containerHeight);
+                
+                // 计算初始缩放以适应容器 - 使用很小的比例
+                mapScale = 0.1; // 直接设置为10%缩放
+                
+                console.log('初始缩放比例:', mapScale);
+                
+                // 居中显示
+                mapOffsetX = (containerWidth - mapWidth * mapScale) / 2;
+                mapOffsetY = (containerHeight - mapHeight * mapScale) / 2;
+                
+                updateMapTransform();
+                updateZoomDisplay();
+                updateCoordinateDisplay(mapWidth / 2, mapHeight / 2);
+                
+                mapLoaded = true;
+                document.getElementById('loading').style.display = 'none';
+                updateMapStatus('地图加载完成 - 可以开始添加回忆点');
+                
+                setupEvents();
+                loadMemories();
+                renderMarkers();
+                updateMemoryCount();
+            };
+            
+            // 图片加载失败处理
+            mapImage.onerror = function() {
+                console.error('图片加载失败: campus_map_2023.jpg');
+                updateMapStatus('图片加载失败');
+                
+                document.getElementById('loading').innerHTML = `
+                    <div class="error-info">
+                        <h3 style="margin-bottom: 10px;">⚠️ 图片加载失败</h3>
+                        <p>无法加载校园地图: <strong>campus_map_2023.jpg</strong></p>
+                        <p style="margin-top: 10px; font-size: 14px;">请检查：</p>
+                        <ul style="text-align: left; margin: 10px 0; font-size: 14px;">
+                            <li>• 图片文件是否存在于当前目录</li>
+                            <li>• 文件名是否正确（区分大小写）</li>
+                            <li>• 图片格式是否支持</li>
+                        </ul>
+                        <button class="btn-primary" onclick="retryLoadImage()" style="margin-top: 15px;">
+                            重试加载
+                        </button>
+                    </div>
+                `;
+            };
+            
+            // 开始加载图片
+            console.log('开始加载图片:', mapImage.src);
+        }
+        
+        // 设置图片上传功能
+        function setupImageUpload() {
+            // 拖拽上传功能
+            const uploadArea = document.querySelector('.image-upload-area');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight(e) {
+                uploadArea.classList.add('dragover');
+            }
+            
+            function unhighlight(e) {
+                uploadArea.classList.remove('dragover');
+            }
+            
+            uploadArea.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                if (files.length > 0) {
+                    handleImageFile(files[0]);
+                }
+            }
+        }
+        
+        // 处理图片上传
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleImageFile(file);
+            }
+        }
+        
+        function handleImageFile(file) {
+            // 检查文件类型
+            if (!file.type.startsWith('image/')) {
+                alert('请选择图片文件！');
+                return;
+            }
+            
+            // 检查文件大小（5MB限制）
+            if (file.size > 5 * 1024 * 1024) {
+                alert('图片大小不能超过5MB！');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentImageData = e.target.result;
+                
+                // 显示预览
+                const preview = document.getElementById('image-preview');
+                const uploadText = document.getElementById('upload-text');
+                const removeBtn = document.getElementById('remove-image-btn');
+                
+                preview.src = currentImageData;
+                preview.style.display = 'block';
+                uploadText.style.display = 'none';
+                removeBtn.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // 删除图片
+        function removeImage(event) {
+            event.stopPropagation();
+            
+            currentImageData = null;
+            
+            const preview = document.getElementById('image-preview');
+            const uploadText = document.getElementById('upload-text');
+            const removeBtn = document.getElementById('remove-image-btn');
+            const input = document.getElementById('image-input');
+            
+            preview.style.display = 'none';
+            uploadText.style.display = 'block';
+            removeBtn.style.display = 'none';
+            input.value = '';
+        }
+        
+        // 编辑时的图片处理
+        function handleEditImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleEditImageFile(file);
+            }
+        }
+        
+        function handleEditImageFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('请选择图片文件！');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) {
+                alert('图片大小不能超过5MB！');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentEditImageData = e.target.result;
+                console.log('图片上传完成 - 新图片长度:', currentEditImageData ? currentEditImageData.length : 0);
+                
+                const preview = document.getElementById('edit-image-preview');
+                const uploadText = document.getElementById('edit-upload-text');
+                const removeBtn = document.getElementById('edit-remove-image-btn');
+                
+                preview.src = currentEditImageData;
+                preview.style.display = 'block';
+                uploadText.style.display = 'none';
+                removeBtn.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function removeEditImage(event) {
+            event.stopPropagation();
+            
+            currentEditImageData = null;
+            console.log('图片已删除 - currentEditImageData设为null');
+            
+            const preview = document.getElementById('edit-image-preview');
+            const uploadText = document.getElementById('edit-upload-text');
+            const removeBtn = document.getElementById('edit-remove-image-btn');
+            const input = document.getElementById('edit-image-input');
+            
+            preview.style.display = 'none';
+            uploadText.style.display = 'block';
+            removeBtn.style.display = 'none';
+            input.value = '';
+        }
+        
+        // 设置事件监听
+        function setupEvents() {
+            const mapContainer = document.getElementById('map-container');
+            const mapImage = document.getElementById('campus-map');
+            
+            // 地图点击事件
+            mapContainer.addEventListener('click', function(e) {
+                if (isDragging || !mapLoaded) return;
+                
+                const rect = mapContainer.getBoundingClientRect();
+                const containerX = e.clientX - rect.left;
+                const containerY = e.clientY - rect.top;
+                
+                // 转换为地图坐标
+                const mapX = (containerX - mapOffsetX) / mapScale;
+                const mapY = (containerY - mapOffsetY) / mapScale;
+                
+                console.log('点击位置 - 容器坐标:', containerX, containerY);
+                console.log('点击位置 - 地图坐标:', mapX, mapY);
+                
+                if (isAddingMarker) {
+                    // 记录点击的坐标
+                    clickedCoords = { x: Math.round(mapX), y: Math.round(mapY) };
+                    document.getElementById('marker-coords').value = `${clickedCoords.x}, ${clickedCoords.y}`;
+                    
+                    // 显示确认位置的提示
+                    showLocationConfirmation(mapX, mapY);
+                }
+                
+                updateCoordinateDisplay(mapX, mapY);
+            });
+            
+            // 鼠标移动显示坐标
+            mapContainer.addEventListener('mousemove', function(e) {
+                if (isDragging || !mapLoaded) return;
+                
+                const rect = mapContainer.getBoundingClientRect();
+                const containerX = e.clientX - rect.left;
+                const containerY = e.clientY - rect.top;
+                
+                const mapX = (containerX - mapOffsetX) / mapScale;
+                const mapY = (containerY - mapOffsetY) / mapScale;
+                
+                updateCoordinateDisplay(mapX, mapY);
+            });
+            
+            // 拖拽功能
+            let startX, startY, initialOffsetX, initialOffsetY;
+            
+            mapImage.addEventListener('mousedown', function(e) {
+                if (isAddingMarker || !mapLoaded) return;
+                
+                isDragging = false;
+                startX = e.clientX;
+                startY = e.clientY;
+                initialOffsetX = mapOffsetX;
+                initialOffsetY = mapOffsetY;
+                
+                function onMouseMove(e) {
+                    e.preventDefault();
+                    const deltaX = e.clientX - startX;
+                    const deltaY = e.clientY - startY;
+                    
+                    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                        isDragging = true;
+                    }
+                    
+                    mapOffsetX = initialOffsetX + deltaX;
+                    mapOffsetY = initialOffsetY + deltaY;
+                    
+                    updateMapTransform();
+                }
+                
+                function onMouseUp() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    
+                    setTimeout(() => {
+                        isDragging = false;
+                    }, 50);
+                }
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+            
+            // 滚轮缩放
+            mapContainer.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                if (!mapLoaded) return;
+                
+                const oldScale = mapScale;
+                
+                if (e.deltaY < 0) {
+                    mapScale = Math.min(mapScale * 1.2, 3);
+                } else {
+                    mapScale = Math.max(mapScale / 1.2, 0.1);
+                }
+                
+                // 以地图中心为缩放中心
+                const mapCenterX = mapOffsetX + (mapWidth * oldScale) / 2;
+                const mapCenterY = mapOffsetY + (mapHeight * oldScale) / 2;
+                
+                // 重新计算偏移量以保持地图中心位置
+                mapOffsetX = mapCenterX - (mapWidth * mapScale) / 2;
+                mapOffsetY = mapCenterY - (mapHeight * mapScale) / 2;
+                
+                updateMapTransform();
+                updateZoomDisplay();
+            });
+        }
+        
+        // 开始添加标记
+        function startAddingMarker(event) {
+            // 防止事件冒泡到地图点击事件
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            if (!mapLoaded) {
+                alert('请等待地图加载完成');
+                return;
+            }
+            
+            isAddingMarker = true;
+            
+            // 更新地图样式
+            const mapImage = document.getElementById('campus-map');
+            mapImage.classList.add('adding-marker');
+            
+            // 显示提示
+            document.getElementById('adding-hint').style.display = 'block';
+            
+            // 更新信息面板
+            const infoPanel = document.querySelector('.info-panel');
+            const currentContent = infoPanel.innerHTML;
+            infoPanel.innerHTML = `
+                <h3 style="margin-bottom: 15px;">📍 添加回忆点模式</h3>
+                <p style="color: #722F37; font-weight: 600; margin-bottom: 15px;">点击地图上任意位置添加回忆点</p>
+                <div style="background: #f0f9f4; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 14px;">
+                    💡 提示：点击后将显示位置确认选项
+                </div>
+                <button class="btn-secondary" onclick="cancelAddingMarker()" style="width: 100%;">
+                    ❌ 取消添加
+                </button>
+            `;
+            
+            // 保存原始内容以便恢复
+            infoPanel.dataset.originalContent = currentContent;
+            
+            updateMapStatus('添加模式已激活 - 点击地图选择位置');
+        }
+        
+        // 显示位置确认
+        function showLocationConfirmation(mapX, mapY) {
+            // 创建临时标记显示选中位置
+            const tempMarker = document.createElement('div');
+            tempMarker.id = 'temp-location-marker';
+            tempMarker.style.cssText = `
+                position: absolute;
+                width: 40px;
+                height: 40px;
+                background: rgba(114, 47, 55, 0.8);
+                border: 3px solid white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 20px;
+                transform: translate(-50%, -50%);
+                z-index: 1000;
+                animation: pulse 2s infinite;
+                pointer-events: none;
+            `;
+            tempMarker.innerHTML = '📍';
+            
+            // 计算标记位置
+            const containerX = mapOffsetX + mapX * mapScale;
+            const containerY = mapOffsetY + mapY * mapScale;
+            tempMarker.style.left = `${containerX}px`;
+            tempMarker.style.top = `${containerY}px`;
+            
+            document.getElementById('map-container').appendChild(tempMarker);
+            
+            // 更新信息面板显示确认选项
+            const infoPanel = document.querySelector('.info-panel');
+            infoPanel.innerHTML = `
+                <h3 style="margin-bottom: 15px;">📍 确认位置</h3>
+                <div style="background: #f0f9f4; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <p style="font-weight: 600; color: #166534; margin-bottom: 10px;">已选择位置：</p>
+                    <p style="font-family: monospace; color: #374151;">坐标: (${Math.round(mapX)}, ${Math.round(mapY)})</p>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="confirmLocation()" style="flex: 1;">
+                        ✅ 确认位置
+                    </button>
+                    <button class="btn-secondary" onclick="cancelLocation()" style="flex: 1;">
+                        🔄 重新选择
+                    </button>
+                </div>
+                <button class="btn-secondary" onclick="cancelAddingMarker()" style="width: 100%; margin-top: 10px;">
+                    ❌ 取消添加
+                </button>
+            `;
+        }
+        
+        // 确认位置
+        function confirmLocation() {
+            // 停止添加模式（但保留临时标记）
+            stopAddingMarker(false);
+            
+            // 打开添加回忆对话框
+            document.getElementById('memory-modal').classList.add('active');
+            
+            // 聚焦到标题输入框
+            setTimeout(() => {
+                document.getElementById('memory-title').focus();
+            }, 100);
+        }
+        
+        // 取消位置选择
+        function cancelLocation() {
+            // 移除临时标记
+            const tempMarker = document.getElementById('temp-location-marker');
+            if (tempMarker) {
+                tempMarker.remove();
+            }
+            
+            // 重置坐标
+            clickedCoords = null;
+            document.getElementById('marker-coords').value = '';
+            
+            // 恢复添加模式提示
+            const infoPanel = document.querySelector('.info-panel');
+            infoPanel.innerHTML = `
+                <h3 style="margin-bottom: 15px;">📍 添加回忆点模式</h3>
+                <p style="color: #722F37; font-weight: 600; margin-bottom: 15px;">点击地图上任意位置添加回忆点</p>
+                <div style="background: #f0f9f4; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 14px;">
+                    💡 提示：点击后将显示位置确认选项
+                </div>
+                <button class="btn-secondary" onclick="cancelAddingMarker()" style="width: 100%;">
+                    ❌ 取消添加
+                </button>
+            `;
+        }
+        
+        // 清理所有临时标记
+        function clearAllTempMarkers() {
+            // 清理所有临时位置标记
+            const tempMarkers = document.querySelectorAll('#temp-location-marker');
+            tempMarkers.forEach(marker => marker.remove());
+            
+            // 重置相关状态
+            clickedCoords = null;
+            const coordsInput = document.getElementById('marker-coords');
+            if (coordsInput) {
+                coordsInput.value = '';
+            }
+        }
+        
+        // 停止添加标记模式
+        function stopAddingMarker(clearTemp = false) {
+            isAddingMarker = false;
+            
+            // 恢复地图样式
+            const mapImage = document.getElementById('campus-map');
+            mapImage.classList.remove('adding-marker');
+            
+            // 隐藏提示
+            document.getElementById('adding-hint').style.display = 'none';
+            
+            // 只在指定时清理临时标记
+            if (clearTemp) {
+                clearAllTempMarkers();
+            }
+            
+            // 恢复信息面板
+            const infoPanel = document.querySelector('.info-panel');
+            if (infoPanel.dataset.originalContent) {
+                infoPanel.innerHTML = infoPanel.dataset.originalContent;
+                delete infoPanel.dataset.originalContent;
+                updateMemoryCount(); // 重新更新计数
+            }
+            
+            updateMapStatus('地图加载完成 - 可以开始添加回忆点');
+        }
+        
+        function cancelAddingMarker() {
+            // 清理临时标记
+            clearAllTempMarkers();
+            
+            stopAddingMarker(true);
+        }
+        
+        function closeMemoryModal() {
+            document.getElementById('memory-modal').classList.remove('active');
+            document.getElementById('memory-form').reset();
+            
+            // 清理图片相关状态
+            removeImage({stopPropagation: () => {}});
+            
+            // 清理临时标记和重置状态
+            clearAllTempMarkers();
+            
+            // 如果还在添加模式，恢复到正常状态
+            if (isAddingMarker) {
+                cancelAddingMarker();
+            }
+        }
+        
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.remove('active');
+            document.getElementById('edit-form').reset();
+            
+            // 清理编辑图片状态 - 但不重置currentEditImageData，避免影响保存
+            const preview = document.getElementById('edit-image-preview');
+            const uploadText = document.getElementById('edit-upload-text');
+            const removeBtn = document.getElementById('edit-remove-image-btn');
+            const input = document.getElementById('edit-image-input');
+            
+            preview.style.display = 'none';
+            uploadText.style.display = 'block';
+            removeBtn.style.display = 'none';
+            input.value = '';
+            
+            // 重置currentEditImageData，为下次编辑做准备
+            currentEditImageData = null;
+        }
+        
+        function closeViewModal() {
+            document.getElementById('view-modal').classList.remove('active');
+        }
+        
+        // 更新地图变换
+        function updateMapTransform() {
+            if (!mapLoaded) return;
+            
+            const mapImage = document.getElementById('campus-map');
+            
+            mapImage.style.transform = `scale(${mapScale}) translate(${mapOffsetX/mapScale}px, ${mapOffsetY/mapScale}px)`;
+            
+            // 更新所有标记位置
+            updateMarkersPosition();
+        }
+        
+        // 缩放函数
+        function zoomIn() {
+            if (!mapLoaded) return;
+            const oldScale = mapScale;
+            mapScale = Math.min(mapScale * 1.3, 3);
+            
+            // 以地图中心为缩放中心
+            const mapCenterX = mapOffsetX + (mapWidth * oldScale) / 2;
+            const mapCenterY = mapOffsetY + (mapHeight * oldScale) / 2;
+            
+            mapOffsetX = mapCenterX - (mapWidth * mapScale) / 2;
+            mapOffsetY = mapCenterY - (mapHeight * mapScale) / 2;
+            
+            updateMapTransform();
+            updateZoomDisplay();
+        }
+        
+        function zoomOut() {
+            if (!mapLoaded) return;
+            const oldScale = mapScale;
+            mapScale = Math.max(mapScale / 1.3, 0.1);
+            
+            // 以地图中心为缩放中心
+            const mapCenterX = mapOffsetX + (mapWidth * oldScale) / 2;
+            const mapCenterY = mapOffsetY + (mapHeight * oldScale) / 2;
+            
+            mapOffsetX = mapCenterX - (mapWidth * mapScale) / 2;
+            mapOffsetY = mapCenterY - (mapHeight * mapScale) / 2;
+            
+            updateMapTransform();
+            updateZoomDisplay();
+        }
+        
+        function resetZoom() {
+            if (!mapLoaded) return;
+            
+            mapScale = 0.1; // 与初始缩放保持一致，设置为10%
+            mapOffsetX = (containerWidth - mapWidth * mapScale) / 2;
+            mapOffsetY = (containerHeight - mapHeight * mapScale) / 2;
+            
+            updateMapTransform();
+            updateZoomDisplay();
+        }
+        
+        // 更新缩放显示
+        function updateZoomDisplay() {
+            const zoomPercent = Math.round(mapScale * 100);
+            document.getElementById('zoom-display').textContent = `缩放: ${zoomPercent}%`;
+        }
+        
+        // 更新坐标显示
+        function updateCoordinateDisplay(x, y) {
+            if (isNaN(x) || isNaN(y)) {
+                document.getElementById('coordinate-display').textContent = '坐标: 无效';
+                return;
+            }
+            document.getElementById('coordinate-display').textContent = `坐标: (${Math.round(x)}, ${Math.round(y)})`;
+        }
+        
+        // 更新地图状态
+        function updateMapStatus(status) {
+            const statusEl = document.getElementById('map-status');
+            if (statusEl) {
+                statusEl.textContent = status;
+            }
+        }
+        
+        // 更新标记位置
+        function updateMarkersPosition() {
+            if (!mapLoaded) return;
+            
+            document.querySelectorAll('.map-marker').forEach((marker) => {
+                const memoryId = marker.dataset.memoryId;
+                const memory = memories.find(m => m.id == memoryId);
+                if (memory) {
+                    const containerX = mapOffsetX + memory.coordinates.x * mapScale;
+                    const containerY = mapOffsetY + memory.coordinates.y * mapScale;
+                    
+                    marker.style.left = `${containerX}px`;
+                    marker.style.top = `${containerY}px`;
+                }
+            });
+        }
+        
+        // 重试加载图片
+        function retryLoadImage() {
+            document.getElementById('loading').innerHTML = '<div>📍 正在重新加载校园地图...</div>';
+            const img = document.getElementById('campus-map');
+            img.src = 'campus_map_2023.jpg?' + Date.now();
+        }
+        
+        // 保存回忆
+        document.getElementById('memory-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!clickedCoords) {
+                alert('请先在地图上选择位置');
+                return;
+            }
+            
+            const memory = {
+                id: Date.now(),
+                coordinates: clickedCoords,
+                title: document.getElementById('memory-title').value,
+                name: document.getElementById('location-name').value || '',
+                content: document.getElementById('memory-content').value,
+                season: document.getElementById('memory-season').value || '',
+                year: document.getElementById('memory-year').value || '',
+                emoji: document.getElementById('memory-emoji').value || '',
+                image: currentImageData || null,
+                date: new Date().toLocaleDateString()
+            };
+            
+            memories.push(memory);
+            saveMemories();
+            renderMarkers();
+            updateMemoryCount();
+            
+            // 清理临时标记
+            clearAllTempMarkers();
+            
+            closeMemoryModal();
+            
+            alert(`回忆"${memory.title}"已保存！`);
+        });
+        
+        // 更新回忆
+        document.getElementById('edit-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const id = parseInt(document.getElementById('edit-memory-id').value);
+            const memory = memories.find(m => m.id === id);
+            
+            if (memory) {
+                memory.title = document.getElementById('edit-memory-title').value;
+                memory.name = document.getElementById('edit-location-name').value;
+                memory.content = document.getElementById('edit-memory-content').value;
+                memory.season = document.getElementById('edit-memory-season').value || '';
+                memory.year = document.getElementById('edit-memory-year').value || '';
+                memory.emoji = document.getElementById('edit-memory-emoji').value || '';
+                
+                // 修复图片保存机制：始终更新图片，因为currentEditImageData已经包含了用户的最终选择
+                // 无论是保持原图、更换新图、还是删除图片，currentEditImageData都是正确的值
+                console.log('保存前 - 原图片长度:', memory.image ? memory.image.length : 0);
+                console.log('保存前 - 新图片长度:', currentEditImageData ? currentEditImageData.length : 0);
+                memory.image = currentEditImageData;
+                console.log('保存后 - 图片长度:', memory.image ? memory.image.length : 0);
+                
+                saveMemories();
+                renderMarkers();
+                closeEditModal();
+                
+                alert(`回忆"${memory.title}"已更新！`);
+            }
+        });
+        
+        function loadMemories() {
+            
+            const saved = localStorage.getItem('campus-memories-enhanced');
+            if (saved) {
+                memories = JSON.parse(saved);
+                // 为旧数据添加缺失的属性
+                memories.forEach(memory => {
+                    // 不再为旧数据设置默认年级
+                    if (!memory.title) {
+                        memory.title = memory.name || '未命名回忆';
+                    }
+                    if (memory.image === undefined) {
+                        memory.image = null;
+                    }
+                    if (memory.emoji === undefined) {
+                        memory.emoji = '';
+                    }
+                });
+            } else {
+                memories = [
+                    {
+                        id: 1,
+                        coordinates: { x: 1929, y: 2936 },
+                        title: '在北馆写毕设',
+                        name: '北馆',
+                        content: '大四的春天基本都泡在这里写毕业论文了',
+                        season: 'spring',
+                        year: '2025',
+                        emoji: '📚',
+                        image: null,
+                    },
+                    {
+                        id: 2,
+                        coordinates: { x: 3127, y: 3088 },
+                        title: '第一次三千米！',
+                        name: '东大操场',
+                        content: '刚上大学的第一个学期，在这里跑出了人生第一次三千米',
+                        season: 'autumn',
+                        year: '2021',
+                        emoji: '🏃',
+                        image: null,
+                    }
+                ];
+                saveMemories();
+            }
+        }
+        
+        function saveMemories() {
+            localStorage.setItem('campus-memories-enhanced', JSON.stringify(memories));
+        }
+        
+        function renderMarkers() {
+            if (!mapLoaded) return;
+            
+            document.querySelectorAll('.map-marker').forEach(marker => marker.remove());
+            
+            memories.forEach(memory => {
+                createMarker(memory);
+            });
+        }
+        
+        function createMarker(memory) {
+            const marker = document.createElement('div');
+            // 根据季节设置样式类，如果没有季节则使用默认
+            const seasonClass = memory.season ? `season-${memory.season}` : 'season-default';
+            marker.className = `map-marker ${seasonClass}`;
+            
+            // 使用自定义emoji，如果没有则根据季节选择，最后默认为📍
+            let markerIcon = memory.emoji || getSeasonIcon(memory.season) || '📍';
+            marker.innerHTML = markerIcon;
+            
+            // 构建标题信息，只显示有值的内容
+            let titleParts = [memory.title || memory.name];
+            if (memory.year) titleParts.push(memory.year);
+            if (memory.season) titleParts.push(getSeasonName(memory.season));
+            marker.title = titleParts.join(' - ');
+            
+            marker.dataset.memoryId = memory.id;
+            
+            marker.addEventListener('click', function(e) {
+                e.stopPropagation();
+                showMemory(memory);
+            });
+            
+            document.getElementById('map-container').appendChild(marker);
+        }
+        
+        function getSeasonIcon(season) {
+            if (!season) return ''; // 如果没有季节，返回空字符串
+            const icons = {
+                spring: '🌸',
+                summer: '🌞',
+                autumn: '🍂',
+                winter: '❄️'
+            };
+            return icons[season] || '';
+        }
+        
+        function getSeasonName(season) {
+            const names = {
+                spring: '春天',
+                summer: '夏天',
+                autumn: '秋天',
+                winter: '冬天'
+            };
+            return names[season] || season;
+        }
+        
+        function showMemory(memory) {
+            // 显示年份信息（只在有年份时显示）
+            let yearInfo = '';
+            
+            if (memory.year && String(memory.year).trim() !== '') {
+                yearInfo = memory.year;
+            }
+            
+            // 只在有年份时显示年份徽章
+            const yearBadge = yearInfo ? `<span class="grade-badge grade-default">${yearInfo}</span>` : '';
+            
+            console.log('年份显示调试:', {
+                year: memory.year,
+                yearInfo,
+                yearBadge: yearBadge ? '有徽章' : '无徽章'
+            });
+            
+            // 季节信息（只在有季节时显示）
+            const seasonBadge = memory.season ? `<span class="season-badge season-${memory.season}">${getSeasonIcon(memory.season)} ${getSeasonName(memory.season)}</span>` : '';
+            
+            // 标题emoji（优先使用自定义emoji，然后是季节emoji）
+            const titleEmoji = memory.emoji || getSeasonIcon(memory.season) || '📍';
+            
+            const locationHtml = memory.name ? `
+                <div style="color: #6b7280; font-size: 14px; margin-bottom: 10px;">
+                    📍 ${memory.name}
+                </div>
+            ` : '';
+            
+            // 判断图片方向来决定布局
+            let layoutClass = 'vertical-layout';
+            let imageHtml = '';
+            
+            if (memory.image) {
+                // 预先判断图片布局类型，避免显示后跳动
+                const tempImg = new Image();
+                tempImg.src = memory.image;
+                
+                // 同步获取图片尺寸（如果已缓存）或使用默认布局
+                let layoutClass = 'vertical-layout'; // 默认竖向布局
+                let maxImageHeight = '200px'; // 默认高度
+                
+                if (tempImg.complete && tempImg.naturalWidth > 0) {
+                    // 图片已缓存，可以同步获取尺寸
+                    const aspectRatio = tempImg.naturalWidth / tempImg.naturalHeight;
+                    if (aspectRatio < 0.8) {
+                        layoutClass = 'horizontal-layout';
+                        maxImageHeight = '350px';
+                    }
+                }
+                
+                imageHtml = `
+                    <div class="memory-image-container">
+                        <img src="${memory.image}" 
+                             class="memory-image" 
+                             alt="${memory.title}" 
+                             style="max-height: ${maxImageHeight};"
+                             onload="
+                                // 图片加载完成后，进行精确的布局调整（如果需要）
+                                const aspectRatio = this.naturalWidth / this.naturalHeight;
+                                const container = this.closest('.memory-main-content');
+                                if (container) {
+                                    const shouldBeHorizontal = aspectRatio < 0.8;
+                                    const currentlyHorizontal = container.classList.contains('horizontal-layout');
+                                    
+                                    // 只有在布局判断不一致时才切换，减少跳动
+                                    if (shouldBeHorizontal && !currentlyHorizontal) {
+                                        container.className = 'memory-main-content horizontal-layout';
+                                        // 横向布局的动态高度调整
+                                        setTimeout(() => {
+                                            const textContent = container.querySelector('.memory-text-content');
+                                            if (textContent) {
+                                                const textHeight = textContent.offsetHeight;
+                                                const maxHeight = Math.max(Math.min(textHeight - 30, 350), 180);
+                                                this.style.maxHeight = maxHeight + 'px';
+                                            }
+                                        }, 50);
+                                    } else if (!shouldBeHorizontal && currentlyHorizontal) {
+                                        container.className = 'memory-main-content vertical-layout';
+                                        this.style.maxHeight = '200px';
+                                    }
+                                }
+                            ">
+                    </div>
+                `;
+                
+                // 更新默认布局类
+                layoutClass = layoutClass;
+            }
+            
+            // 根据是否有图片添加相应的CSS类
+            const hasImageClass = memory.image ? 'has-image' : '';
+            
+            const content = `
+                <div class="memory-content ${hasImageClass}">
+                    <button class="close-btn" onclick="closeViewModal()">×</button>
+                    
+                    <div class="memory-header">
+                        <div class="memory-title">
+                            <span class="memory-title-emoji">${titleEmoji}</span>
+                            <span>${memory.title || memory.name || '未命名回忆'}</span>
+                        </div>
+                        <div class="memory-badges">
+                            ${yearBadge}
+                        </div>
+                    </div>
+                    
+                    <div class="memory-body">
+                        <div class="memory-main-content ${layoutClass}">
+                            ${imageHtml}
+                            <div class="memory-text-content">
+                                <div class="memory-text-scrollable">
+                                    ${locationHtml}
+                                    <div class="memory-description">${memory.content}</div>
+                                </div>
+                                <div class="memory-meta">
+                                    <div>
+                                        ${seasonBadge}
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <button class="btn-edit" onclick="editMemory(${memory.id}); closeViewModal();">✏️ 编辑</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('view-content').innerHTML = content;
+            document.getElementById('view-modal').classList.add('active');
+        }
+        
+        function updateMemoryCount() {
+            const countEl = document.getElementById('memory-count');
+            if (countEl) {
+                countEl.textContent = memories.length;
+            }
+        }
+        
+        // 打开数据管理
+        function openDataManagement() {
+            updateDataStats();
+            refreshDataTable();
+            document.getElementById('data-management-modal').classList.add('active');
+        }
+        
+        function closeDataManagement() {
+            document.getElementById('data-management-modal').classList.remove('active');
+        }
+        
+        // 更新数据统计
+        function updateDataStats() {
+            const total = memories.length;
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            
+            const recent = memories.filter(m => {
+                const memoryDate = new Date(m.date);
+                return memoryDate.getMonth() === currentMonth && memoryDate.getFullYear() === currentYear;
+            }).length;
+            
+            const yearStats = {};
+            const seasonStats = {};
+            
+            memories.forEach(m => {
+                if (m.year && String(m.year).trim() !== '') {
+                    yearStats[m.year] = (yearStats[m.year] || 0) + 1;
+                }
+                seasonStats[m.season] = (seasonStats[m.season] || 0) + 1;
+            });
+            
+            document.getElementById('total-memories').textContent = total;
+            document.getElementById('recent-memories').textContent = recent;
+            document.getElementById('year-distribution').textContent = Object.keys(yearStats).length;
+            document.getElementById('season-distribution').textContent = Object.keys(seasonStats).length;
+        }
+        
+        // 刷新数据表格
+        function refreshDataTable() {
+            const tbody = document.getElementById('data-table-body');
+            tbody.innerHTML = '';
+            
+            memories.forEach(memory => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <strong>${memory.title || memory.name}</strong>
+                        <br><small style="color: #666;">${memory.content.substring(0, 30)}...</small>
+                    </td>
+                    <td>${memory.name || '-'}</td>
+                    <td><code>(${memory.coordinates.x}, ${memory.coordinates.y})</code></td>
+                    <td><span class="season-badge season-${memory.season}">${getSeasonIcon(memory.season)} ${getSeasonName(memory.season)}</span></td>
+                    <td>${memory.year && String(memory.year).trim() !== '' ? memory.year : '-'}</td>
+                    <td>
+                        <button class="btn-edit" onclick="editMemory(${memory.id})">✏️ 编辑</button>
+                        <button class="btn-danger" onclick="deleteMemory(${memory.id})">🗑️ 删除</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // 编辑回忆
+        function editMemory(id) {
+            const memory = memories.find(m => m.id === id);
+            if (!memory) return;
+            
+            document.getElementById('edit-memory-id').value = memory.id;
+            document.getElementById('edit-marker-coords').value = `${memory.coordinates.x}, ${memory.coordinates.y}`;
+            document.getElementById('edit-memory-title').value = memory.title || memory.name || '';
+            document.getElementById('edit-location-name').value = memory.name || '';
+            document.getElementById('edit-memory-content').value = memory.content;
+            document.getElementById('edit-memory-season').value = memory.season || '';
+            document.getElementById('edit-memory-year').value = memory.year || '';
+            document.getElementById('edit-memory-emoji').value = memory.emoji || '';
+            
+            // 设置编辑图片 - 重要：初始化为原始图片
+            currentEditImageData = memory.image;
+            console.log('编辑开始 - 初始化图片长度:', currentEditImageData ? currentEditImageData.length : 0);
+            const preview = document.getElementById('edit-image-preview');
+            const uploadText = document.getElementById('edit-upload-text');
+            const removeBtn = document.getElementById('edit-remove-image-btn');
+            const input = document.getElementById('edit-image-input');
+            
+            // 重置input
+            input.value = '';
+            
+            if (memory.image) {
+                preview.src = memory.image;
+                preview.style.display = 'block';
+                uploadText.style.display = 'none';
+                removeBtn.style.display = 'block';
+            } else {
+                preview.style.display = 'none';
+                uploadText.style.display = 'block';
+                removeBtn.style.display = 'none';
+            }
+            
+            closeDataManagement();
+            document.getElementById('edit-modal').classList.add('active');
+        }
+        
+        // 删除回忆
+        function deleteMemory(id) {
+            const memory = memories.find(m => m.id === id);
+            const title = memory ? (memory.title || memory.name) : '此回忆';
+            
+            if (confirm(`确定要删除回忆"${title}"吗？此操作不可撤销。`)) {
+                memories = memories.filter(m => m.id !== id);
+                saveMemories();
+                renderMarkers();
+                updateMemoryCount();
+                refreshDataTable();
+                updateDataStats();
+            }
+        }
+        
+        // 清空所有数据
+        function clearAllData() {
+            if (confirm('确定要清空所有数据吗？此操作不可撤销！')) {
+                memories = [];
+                saveMemories();
+                renderMarkers();
+                updateMemoryCount();
+                refreshDataTable();
+                updateDataStats();
+                alert('所有数据已清空');
+            }
+        }
+        
+        // 导出数据
+        function exportData() {
+            const dataStr = JSON.stringify(memories, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `清华回忆地图-${new Date().toLocaleDateString()}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            alert('数据导出成功！');
+        }
+
+        
+        // 导入数据
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            if (Array.isArray(data)) {
+                                if (confirm(`确定要导入 ${data.length} 条回忆数据吗？现有数据将被覆盖。`)) {
+                                    memories = data;
+                                    saveMemories();
+                                    renderMarkers();
+                                    updateMemoryCount();
+                                    refreshDataTable();
+                                    updateDataStats();
+                                    alert('数据导入成功！');
+                                }
+                            } else {
+                                alert('无效的数据格式');
+                            }
+                        } catch (error) {
+                            alert('文件解析失败: ' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+        
+        // 窗口大小改变时重新计算
+        window.addEventListener('resize', function() {
+            if (!mapLoaded) return;
+            
+            const mapContainer = document.getElementById('map-container');
+            containerWidth = mapContainer.offsetWidth;
+            containerHeight = mapContainer.offsetHeight;
+            updateMapTransform();
+        });
+        
+        // Info弹窗相关函数
+        function openInfoModal() {
+            document.getElementById('info-modal').style.display = 'block';
+        }
+        
+        function closeInfoModal() {
+            document.getElementById('info-modal').style.display = 'none';
+        }
+        
+        // 点击弹窗外部关闭
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('info-modal');
+            if (event.target === modal) {
+                closeInfoModal();
+            }
+        });
+    </script>
+    
+    <!-- 作者信息 -->
+    <div class="author-info">
+        <span>by Daniel Wong</span>
+        <div class="info-icon" onclick="openInfoModal()" title="关于项目">i</div>
+    </div>
+    
+    <!-- Info弹窗 -->
+    <div id="info-modal" class="info-modal">
+        <div class="info-modal-content">
+            <button class="close-btn" onclick="closeInfoModal()">&times;</button>
+            <h3>🎓 关于清华回忆地图</h3>
+            <p>这是一个用于记录和分享清华大学校园回忆的交互式地图应用。</p>
+            
+            <p><strong>👨‍💻 创作者：</strong><br>
+            Daniel Wong<br>
+            一字班 History of Art</p>
+            
+            <p><strong>💡 使用指南：</strong><br>
+            除了基础的使用方式之外：<br>
+            • 记录管理-导出/导入数据，可以将你的记录点与朋友一起分享。<br>
+            • 记录管理-导出数据-清空，可以保留多版不同主题的数据。你可以在仓库里找到我的“伤春悲秋”专题——之所以放这个专题上来，是因为它完全不暴露隐私 :)<br>
+            
+            <p><strong>🧐 为什么想做这样一个网页：</strong><br>
+            在 2025 年的秋天，北京最美的时候，又回了一次清华。对这里的感情，似乎比我想象中更纠缠不清。<br>
+            与朋友做了很多对于生活方式的讨论，高中以来的幼稚的信仰是生活本身是理论的外化，也就是每天 24 个小时就是我进行雕刻的大理石，刀刃则是我读的书、做的研究以及信奉的理论，朴素来讲，所谓「身体力行」，自负来说，研究艺术史却不能抽离之带来的「后遗症」。而这个信仰在我毕业之后一遍一遍复盘我的大学 routine ，并且最终需要承认我过了非常多无意义的生活时遇到了严重的危机——更严重的可能是今天回学校之后发现这样的惯性并没有改变。所谓无意义的生活并不在于耽溺玩乐（那是卷王害怕的），也不在于朝三暮四（那是禅者忌惮的），而在于处于虚无、游离和无法自持的状态，并且在作年终总结时用几点高光盖过日常的无意义，然后安慰自己一切都好。<br>
+            我是在大学最后一个学期，翻遍半年也找不到意义高点的时候，初次发现这个问题的。而对于四年间这样的生活，最好的纪念方式便是将其彻底地变成电影帧，然后留待记忆一遍遍地淡化或者重写。我于是做了这样一个网站，等待意义自我显现的时刻。</p>
+            
+            <p style="text-align: center; margin-top: 20px; color: #722F37; font-weight: bold;">
+            期待你写下自己的那份故事。
+            </p>
+        </div>
+    </div>
+</body>
+</html>
