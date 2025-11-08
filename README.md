@@ -2,11 +2,6 @@
 
 一个基于HTML5的交互式校园记忆地图，让你在清华大学校园地图上记录和分享珍贵回忆。
 
-![清华回忆地图](https://img.shields.io/badge/清华大学-校园回忆地图-purple?style=for-the-badge)
-![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
-![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white)
-
 
 ## 🚀 快速开始
 
